@@ -1,9 +1,9 @@
 from user.models import UserProfile, LoginToken
 from rest_framework import serializers
 from django.contrib.auth.hashers import make_password, check_password
-import uuid
+import hashlib
 from weconnect.tasks import send_verify_email_task
-
+from rest_framework.authtoken.models import Token
 
 class UserSerializer(serializers.ModelSerializer):
     """
@@ -20,8 +20,9 @@ class UserSerializer(serializers.ModelSerializer):
 
         validated_data['password'] = make_password(password)
 
-        email_token = uuid.uuid4()
+        email_token = hashlib.md5(email.encode()).hexdigest()
         validated_data['email_token'] = email_token
+        
         send_verify_email_task.delay(email, email_token)
 
         return super(UserSerializer, self).create(validated_data)
