@@ -8,7 +8,7 @@ from django.conf import settings
 from django.db import models
 
 from base.models import BaseModel
-from user.constants import TOKEN_EXPIRY_TIME
+from weconnect.constants import TOKEN_EXPIRY_TIME, DEFAULT_PROFILE_PIC
 
 
 class UserManager(BaseUserManager):
@@ -60,12 +60,13 @@ class UserProfile(BaseModel, AbstractBaseUser, PermissionsMixin):
     password = models.CharField(max_length=100)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50, blank=True)
-    profile_pic = models.ImageField(upload_to="assets/profile_pics/", default="assets/profile_pics/default.jpg")
+    profile_pic = models.ImageField(upload_to="profile_pics/", default=DEFAULT_PROFILE_PIC)
     date_of_birth = models.DateField(blank=True, null=True)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     city = models.CharField(max_length=50, blank=True)
     verified = models.BooleanField(default=False)
     watched_by = models.ManyToManyField("self", related_name="watching", symmetrical=False, blank=True)
+    email_token = models.CharField(max_length=255, blank=True)
     is_superuser = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
 
@@ -106,20 +107,20 @@ class LoginToken(BaseModel, models.Model):
         return self.key
 
 
-class EmailToken(BaseModel, models.Model):
-    """
-    This model will store token which will be used to verify user
-    """
-    key = models.CharField(primary_key=True, max_length=255, verbose_name="Email Token")
-    email = models.EmailField(max_length=100, unique=True)
+# class EmailToken(BaseModel, models.Model):
+#     """
+#     This model will store token which will be used to verify user
+#     """
+#     key = models.CharField(primary_key=True, max_length=255, verbose_name="Email Token")
+#     email = models.EmailField(max_length=100, unique=True)
 
-    def save(self, *args, **kwargs):
-        if not self.key:
-            self.key = self.generate_key()
-        return super().save(*args, **kwargs)
+#     def save(self, *args, **kwargs):
+#         if not self.key:
+#             self.key = self.generate_key()
+#         return super().save(*args, **kwargs)
 
-    def generate_key(self):
-        return binascii.hexlify(os.urandom(20)).decode()
+#     def generate_key(self):
+#         return binascii.hexlify(os.urandom(20)).decode()
 
-    def __str__(self):
-        return "{} : {}".format(self.email, self.key)
+#     def __str__(self):
+#         return "{} : {}".format(self.email, self.key)

@@ -17,6 +17,9 @@ ALLOWED_HOSTS = []
 
 AUTH_USER_MODEL = 'user.UserProfile'
 
+MEDIA_ROOT =  os.path.join(BASE_DIR, 'assets') 
+MEDIA_URL = '/assets/'
+
 
 # Application definition
 
@@ -45,10 +48,12 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'weconnect.urls'
 
+SETTINGS_PATH = os.path.dirname(os.path.dirname(__file__))
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(SETTINGS_PATH, 'weconnect/')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -60,6 +65,7 @@ TEMPLATES = [
         },
     },
 ]
+
 
 WSGI_APPLICATION = 'weconnect.wsgi.application'
 
