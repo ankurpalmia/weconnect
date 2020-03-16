@@ -91,14 +91,11 @@ class LoginToken(BaseModel, models.Model):
     """
     key = models.CharField(unique=True, max_length=255, verbose_name="Token Key")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="login_tokens")
-    is_valid = models.BooleanField(default=True)
-    expiry_time = models.DateTimeField(blank=True, null=True)
-
+    
     def save(self, *args, **kwargs):
         if not self.key:
             self.key = self.generate_key()
-            self.expiry_time = datetime.now() + timedelta(hours=TOKEN_EXPIRY_TIME)
-        return super().save(*args, **kwargs)
+            return super().save(*args, **kwargs)
 
     def generate_key(self):
         return binascii.hexlify(os.urandom(20)).decode()
