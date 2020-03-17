@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from rest_framework.viewsets import ModelViewSet
-from rest_framework.generics import CreateAPIView, DestroyAPIView
+from rest_framework.generics import CreateAPIView, DestroyAPIView, RetrieveAPIView
 from user.models import UserProfile, LoginToken
 from rest_framework.response import Response
 from rest_framework import permissions, views, status
@@ -13,6 +13,19 @@ class UserViewset(ModelViewSet):
     """
     queryset = UserProfile.objects.all()
     serializer_class = UserSerializer
+
+
+class GetUserDetails(RetrieveAPIView):
+    """
+    This view returns the details of the logged in user 
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        if request.user:
+            return Response(UserSerializer(request.user).data)
+        return super(GetUserDetails, self).retrieve(request, pk)
 
 
 class LoginView(CreateAPIView):
