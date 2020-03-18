@@ -3,24 +3,25 @@ from base.models import BaseModel
 from user.models import UserProfile
 from django.db.models import Q
 from django.core.exceptions import ValidationError
+from weconnect.constants import POST_PIC_PATH, PRIVACY_CHOICES
 
 
 class Post(BaseModel, models.Model):
     """
     This model stores the Posts of users
     """
-    PRIVACY_CHOICES = [
-        ('PUBLIC', 'Public'),
-        ('PRIVATE', 'Private'),
-        ('FRIENDS', 'Friends only'),
-        ('CUSTOM', 'Custom')
+    CHOICES = [
+        (PRIVACY_CHOICES.PUBLIC, 'Public'),
+        (PRIVACY_CHOICES.PRIVATE, 'Private'),
+        (PRIVACY_CHOICES.FRIENDS, 'Friends only'),
+        (PRIVACY_CHOICES.CUSTOM, 'Custom')
     ]
     text = models.TextField()
-    image = models.ImageField(upload_to="assets/posts/", null=True, blank=True)
+    image = models.ImageField(upload_to=POST_PIC_PATH, null=True, blank=True)
     created_by = models.ForeignKey(UserProfile, related_name="posts", on_delete=models.CASCADE)
-    privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES)
+    privacy = models.CharField(max_length=10, choices=CHOICES)
     custom_list = models.ManyToManyField(UserProfile, related_name="post_by_friends", blank=True)
-    liked_by = models.ManyToManyField(UserProfile, related_name="likes", blank=True)
+    liked_by = models.ManyToManyField(UserProfile, related_name="liked_posts", blank=True)
 
     def __str__(self):
         return "{}'s post on {}".format(self.created_by.first_name, self.created_at)

@@ -11,29 +11,32 @@ class PostSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Post
-        fields = ['text', 'image', 'created_by', 'privacy', 'custom_list', 'liked_by']
+        fields = ['text', 'image', 'created_by', 'privacy', 'custom_list', 'liked_by', 'pk']
+
+
+class UserForPost(serializers.ModelSerializer):
+    """
+    This serializer is for serializing user related fields for PostSerializer
+    """
+    full_name = serializers.CharField(source='get_full_name')
+
+    class Meta:
+        model = UserProfile
+        fields = ['username', 'full_name']
 
 
 class GetPostSerializer(serializers.ModelSerializer):
     """
     This serializer will get all posts for a user's feed
     """
+    created_by = UserForPost(read_only=True)
+
     class Meta:
-        model = UserProfile
-        fields = ['username']
+        model = Post
+        fields = ['text', 'image', 'created_at', 'created_by']
     
     def to_representation(self, instance):
-        all_friends = get_friends(instance)
-        all_posts = Post.objects.filter(created_by=instance)
-        for friend in all_friends:
-            posts = Post.objects.filter(
-                Q(created_by=friend, privacy='PUBLIC') | 
-                Q(created_by=friend, privacy='FRIENDS'))
-            all_posts |= posts
-        custom_list_posts = instance.post_by_friends.all()
-        all_posts |= custom_list_posts
-        all_posts = all_posts.order_by('-created_at')
-        all_posts = create_post_dict(all_posts)
         post_list = super().to_representation(instance)
-        post_list['posts'] = all_posts
+        post_list['likes'] = instance.liked_by.count()
+        post_list['liked_by'] = [person.get_full_name() for person in instance.liked_by.all()],
         return post_list

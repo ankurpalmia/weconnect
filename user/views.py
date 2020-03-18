@@ -23,10 +23,8 @@ class GetUserDetails(RetrieveAPIView):
     serializer_class = UserSerializer
 
     def retrieve(self, request, *args, **kwargs):
-        if request.user:
-            return Response(UserSerializer(request.user).data)
-        return super(GetUserDetails, self).retrieve(request, pk)
-
+        return Response(UserSerializer(request.user).data)
+        
 
 class LoginView(CreateAPIView):
     """

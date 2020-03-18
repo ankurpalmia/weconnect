@@ -8,7 +8,7 @@ from django.conf import settings
 from django.db import models
 
 from base.models import BaseModel
-from weconnect.constants import TOKEN_EXPIRY_TIME, DEFAULT_PROFILE_PIC
+from weconnect.constants import TOKEN_EXPIRY_TIME, DEFAULT_PROFILE_PIC, PROFILE_PIC_PATH
 
 
 class UserManager(BaseUserManager):
@@ -60,7 +60,7 @@ class UserProfile(BaseModel, AbstractBaseUser, PermissionsMixin):
     password = models.CharField(max_length=100)
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50, blank=True)
-    profile_pic = models.ImageField(upload_to="profile_pics/", default=DEFAULT_PROFILE_PIC)
+    profile_pic = models.ImageField(upload_to=PROFILE_PIC_PATH, default=DEFAULT_PROFILE_PIC)
     date_of_birth = models.DateField(blank=True, null=True)
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     city = models.CharField(max_length=50, blank=True)
