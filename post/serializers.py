@@ -1,7 +1,7 @@
 from user.models import UserProfile
 from post.models import Post, Friend
 from rest_framework import serializers
-from post.utils import get_friends
+from post.utils import get_friends, create_post_dict
 from django.db.models import Q
 
 
@@ -33,21 +33,7 @@ class GetPostSerializer(serializers.ModelSerializer):
         custom_list_posts = instance.post_by_friends.all()
         all_posts |= custom_list_posts
         all_posts = all_posts.order_by('-created_at')
-        post_list = []
-        for post in all_posts:
-            post_list.append({
-                'text': post.text,
-                'image': post.image if post.image else None,
-                'created_by': {
-                    'name': post.created_by.get_full_name(),
-                    'username': post.created_by.username
-                },
-                'likes': post.liked_by.count(),
-                'liked_by': [person.get_full_name() for person in post.liked_by.all()],
-                'created_at': post.created_at
-            })
-        all_posts = post_list
+        all_posts = create_post_dict(all_posts)
         post_list = super().to_representation(instance)
         post_list['posts'] = all_posts
         return post_list
-    
