@@ -13,6 +13,10 @@ class PostSerializer(serializers.ModelSerializer):
         model = Post
         fields = ['text', 'image', 'created_by', 'privacy', 'custom_list', 'liked_by', 'pk']
 
+    def create(self, validated_data):
+        validated_data['created_by'] = self.context['request'].user
+        return super(PostSerializer, self).create(validated_data)
+
 
 class UserForPost(serializers.ModelSerializer):
     """
@@ -22,7 +26,7 @@ class UserForPost(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ['username', 'full_name']
+        fields = ['username', 'full_name', 'profile_pic', 'pk']
 
 
 class GetPostSerializer(serializers.ModelSerializer):
@@ -33,10 +37,11 @@ class GetPostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['text', 'image', 'created_at', 'created_by']
+        fields = ['text', 'image', 'created_at', 'created_by', 'pk', 'custom_list', 'privacy']
     
     def to_representation(self, instance):
         post_list = super().to_representation(instance)
         post_list['likes'] = instance.liked_by.count()
-        post_list['liked_by'] = [person.get_full_name() for person in instance.liked_by.all()],
+        post_list['liked_by'] = [person.get_full_name() for person in instance.liked_by.all()]
+        post_list['liked_by_me'] = UserProfile.objects.filter(liked_posts=post_list['pk']).exists()
         return post_list

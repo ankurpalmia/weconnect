@@ -1,10 +1,11 @@
 from django.shortcuts import render
 from post.models import Post, Friend
 from user.models import UserProfile
-from post.serializers import PostSerializer, GetPostSerializer
+from post.serializers import PostSerializer, GetPostSerializer, UserForPost
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from rest_framework import permissions
 from django.shortcuts import get_object_or_404
 from post.permissions import IsVerifiedOwner
@@ -27,7 +28,8 @@ class GetPostsView(ListAPIView):
     """
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = GetPostSerializer
-
+    pagination_class = PageNumberPagination
+    
     def list(self, request, *args, **kwargs):
         user = request.user
         all_friends = get_friends(user)
@@ -42,8 +44,10 @@ class GetPostsView(ListAPIView):
         all_posts = all_posts.order_by('-created_at')
         
         serializer = self.serializer_class(all_posts, many=True)
+        page = self.paginate_queryset(serializer.data)
+        return self.get_paginated_response(page)
 
-        return Response(serializer.data)
+        # return Response(serializer.data)
 
 
 class UserProfileView(ListAPIView):
@@ -75,3 +79,13 @@ class UserProfileView(ListAPIView):
         serializer = self.serializer_class(all_posts, many=True)
         return Response(serializer.data)
 
+
+class GetAllFriendsView(ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserForPost
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+        all_friends = get_friends(user)
+        serializer = self.serializer_class(all_friends, many=True)
+        return Response(serializer.data)

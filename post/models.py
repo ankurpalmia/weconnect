@@ -18,7 +18,7 @@ class Post(BaseModel, models.Model):
     ]
     text = models.TextField()
     image = models.ImageField(upload_to=POST_PIC_PATH, null=True, blank=True)
-    created_by = models.ForeignKey(UserProfile, related_name="posts", on_delete=models.CASCADE)
+    created_by = models.ForeignKey(UserProfile, related_name="posts", on_delete=models.CASCADE, blank=True)
     privacy = models.CharField(max_length=10, choices=CHOICES)
     custom_list = models.ManyToManyField(UserProfile, related_name="post_by_friends", blank=True)
     liked_by = models.ManyToManyField(UserProfile, related_name="liked_posts", blank=True)

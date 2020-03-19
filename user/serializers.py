@@ -11,9 +11,11 @@ class UserSerializer(serializers.ModelSerializer):
     """
     This serializer is for user signup
     """
+    full_name = serializers.CharField(source='get_full_name', required=False)
+
     class Meta:
         model = UserProfile
-        fields = ['email', 'username', 'first_name', 'last_name', 'password', 'email_token', 'profile_pic', 'verified', 'date_of_birth', 'gender', 'city', 'watched_by', 'pk']
+        fields = ['email', 'username', 'full_name', 'first_name', 'last_name', 'password', 'email_token', 'profile_pic', 'verified', 'date_of_birth', 'gender', 'city', 'watched_by', 'pk']
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):

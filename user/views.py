@@ -52,4 +52,5 @@ class LogoutView(DestroyAPIView):
         user = request.user
         LoginToken.objects.get(user=user).delete()
         return Response("Logout Successful", status=status.HTTP_200_OK) 
+
         
