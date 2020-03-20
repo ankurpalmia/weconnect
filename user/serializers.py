@@ -3,8 +3,9 @@ from rest_framework import serializers
 from django.contrib.auth.hashers import make_password, check_password
 import hashlib
 from django.contrib.auth import authenticate
-
+from post.models import Friend
 from weconnect.tasks import send_verify_email_task
+from django.db.models import Q
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -55,3 +56,30 @@ class LoginSerializer(serializers.Serializer):
 
         attrs['user'] = user
         return attrs
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    """
+    This serializer is used for User Profile
+    """
+    full_name = serializers.CharField(source='get_full_name')
+
+    class Meta:
+        model = UserProfile
+        fields = ['username', 'full_name', 'profile_pic', 'date_of_birth', 'gender', 'city']
+
+    def to_representation(self, instance):
+        user = super().to_representation(instance)
+        auth_user = self.context['request'].user
+        is_friend = None
+        try:
+            is_friend = Friend.objects.get(
+                Q(sender=instance, receiver=auth_user) | 
+                Q(receiver=instance, sender=auth_user))
+            is_friend = is_friend.accepted
+        except Friend.DoesNotExist:
+            is_friend = None
+        user['is_friend'] = is_friend
+        return user
+
+        

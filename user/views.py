@@ -4,7 +4,9 @@ from rest_framework.generics import CreateAPIView, DestroyAPIView, RetrieveAPIVi
 from user.models import UserProfile, LoginToken
 from rest_framework.response import Response
 from rest_framework import permissions, views, status
-from user.serializers import UserSerializer, LoginSerializer
+from user.serializers import UserSerializer, LoginSerializer, UserProfileSerializer
+from django.shortcuts import get_object_or_404
+
 
 
 class UserViewset(ModelViewSet):
@@ -53,4 +55,19 @@ class LogoutView(DestroyAPIView):
         LoginToken.objects.get(user=user).delete()
         return Response("Logout Successful", status=status.HTTP_200_OK) 
 
+        
+class GetProfileView(RetrieveAPIView):
+    """
+    This view will return the requested user profile
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = UserProfileSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        user = request.user
+        requested_user = request.query_params.get('username')
+
+        get_user = get_object_or_404(UserProfile, username=requested_user)
+        serializer = self.serializer_class(get_user, context={'request': request})
+        return Response(serializer.data)
         

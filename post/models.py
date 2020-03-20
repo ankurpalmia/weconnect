@@ -35,8 +35,8 @@ class Friend(models.Model):
     receiver = models.ForeignKey(UserProfile, related_name="receiver", on_delete=models.CASCADE)
     accepted = models.NullBooleanField(default=None)
 
-    # class Meta:
-    #     unique_together = ('sender', 'receiver')
+    class Meta:
+        unique_together = ('sender', 'receiver')
 
     def __str__(self):
         return "{} to {}".format(self.sender, self.receiver)
