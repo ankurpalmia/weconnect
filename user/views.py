@@ -3,6 +3,7 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.generics import CreateAPIView, DestroyAPIView, RetrieveAPIView
 from user.models import UserProfile, LoginToken
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework import permissions, views, status
 from user.serializers import UserSerializer, LoginSerializer, UserProfileSerializer
 from django.shortcuts import get_object_or_404
@@ -71,3 +72,14 @@ class GetProfileView(RetrieveAPIView):
         serializer = self.serializer_class(get_user, context={'request': request})
         return Response(serializer.data)
         
+
+class EmailVerifyView(APIView):
+
+    def post(self, request, *args, **kwargs):
+        token = request.data['token']
+        user_obj = get_object_or_404(UserProfile, email_token=token)
+        if user_obj.verified:
+            return Response("Already verified", status=status.HTTP_400_BAD_REQUEST)
+        user_obj.verified = True
+        user_obj.save()
+        return Response("Verified successfully", status=status.HTTP_200_OK)
