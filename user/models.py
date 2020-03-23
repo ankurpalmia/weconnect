@@ -67,6 +67,7 @@ class UserProfile(BaseModel, AbstractBaseUser, PermissionsMixin):
     verified = models.BooleanField(default=False)
     watched_by = models.ManyToManyField("self", related_name="watching", symmetrical=False, blank=True)
     email_token = models.CharField(max_length=255, blank=True)
+    forgot_pass_token = models.CharField(max_length=255, blank=True)
     is_superuser = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
 

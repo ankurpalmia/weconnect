@@ -5,7 +5,7 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 
 from . import settings
-from weconnect.constants import VERIFY_EMAIL_SUBJECT, REQUEST_MAIL_SUBJECT
+from weconnect.constants import VERIFY_EMAIL_SUBJECT, REQUEST_MAIL_SUBJECT, FORGOT_PASSWORD_MAIL_SUBJECT
 
 
 def send_verify_email(email, token):
@@ -32,6 +32,18 @@ def send_friend_request(email, sender, sender_pk, receiver_pk):
         html_message=msg_html
     )
 
+def forgot_password_mail(email, token):
+    msg_html = render_to_string('templates/forgot_password_mail.html', {'token': token, 'url': settings.URL})
+    msg = ""
+    email_subject = FORGOT_PASSWORD_MAIL_SUBJECT
+    send_mail(
+        email_subject,
+        msg,
+        settings.EMAIL_HOST_USER,
+        [email],
+        html_message=msg_html
+    )
+
 # This is the decorator which a celery worker uses   
 @task()
 def send_verify_email_task(email, token):
@@ -41,3 +53,6 @@ def send_verify_email_task(email, token):
 def send_friend_request_task(email, sender, sender_pk, receiver_pk):
     return send_friend_request(email, sender, sender_pk, receiver_pk)
 
+@task()
+def forgot_password_mail_task(email, token):
+    return forgot_password_mail(email, token)

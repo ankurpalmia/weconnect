@@ -1,17 +1,17 @@
-from django.shortcuts import render
-from post.models import Post, Friend
-from user.models import UserProfile
-from post.serializers import PostSerializer, GetPostSerializer, UserForPost
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.generics import ListAPIView, CreateAPIView
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.pagination import PageNumberPagination
-from rest_framework import permissions, status
-from django.shortcuts import get_object_or_404
-from post.permissions import IsVerifiedOwner
-from post.utils import get_friends
 from django.db.models import Q
+from django.shortcuts import get_object_or_404, render
+from rest_framework import permissions, status
+from rest_framework.generics import CreateAPIView, ListAPIView
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
+
+from post.models import Friend, Post
+from post.permissions import IsVerifiedOwner
+from post.serializers import GetPostSerializer, PostSerializer, UserForPost
+from post.utils import get_friends
+from user.models import UserProfile
 from weconnect.tasks import send_friend_request_task
 
 
@@ -36,16 +36,19 @@ class GetPostsView(ListAPIView):
         user = request.user
         all_friends = get_friends(user)
         all_posts = Post.objects.filter(created_by=user)
+
         for friend in all_friends:
             posts = Post.objects.filter(
                 Q(created_by=friend, privacy='PUBLIC') | 
                 Q(created_by=friend, privacy='FRIENDS'))
             all_posts |= posts
+            
         custom_list_posts = user.post_by_friends.all()
+        print(custom_list_posts.query)
         all_posts |= custom_list_posts
         all_posts = all_posts.order_by('-created_at')
         
-        serializer = self.serializer_class(all_posts, many=True)
+        serializer = self.serializer_class(all_posts.distinct(), many=True)
         page = self.paginate_queryset(serializer.data)
         return self.get_paginated_response(page)
 
@@ -71,11 +74,16 @@ class UserProfilePostsView(ListAPIView):
                 return Q(created_by=username, privacy='FRIENDS')
             else :
                 return Q()
+        
+        def is_same_user():
+            if requested_by == username:
+                return Q(created_by=username, privacy='PRIVATE') | Q(created_by=username, privacy='CUSTOM') | Q(created_by=username, privacy='FRIENDS')
+            else:
+                return Q(created_by=username, privacy='CUSTOM', custom_list=requested_by.pk)
 
         all_posts = Post.objects.filter(
-            is_friend() |
-            Q(created_by=username, privacy='PUBLIC') | 
-            Q(created_by=username, privacy='CUSTOM', custom_list=requested_by.pk))
+            is_friend() | is_same_user() |
+            Q(created_by=username, privacy='PUBLIC'))
         
         all_posts = all_posts.order_by('-created_at')
         
@@ -127,4 +135,22 @@ class RespondRequest(APIView):
         else:
             Friend.objects.filter(sender=sender, receiver=receiver).delete()
         
+        return Response(status=status.HTTP_200_OK)
+
+
+class LikeUnlikeView(APIView):
+
+    def post(self, request, *args, **kwargs):
+        user = request.user
+        pk = request.data['pk']
+        action = request.data['action']
+
+        post_obj = get_object_or_404(Post, pk=pk)
+        liked_by = post_obj.liked_by
+        
+        if action == 'like':
+            post_obj.liked_by.add(user)
+        else:
+            post_obj.liked_by.remove(user)
+        post_obj.save()
         return Response(status=status.HTTP_200_OK)

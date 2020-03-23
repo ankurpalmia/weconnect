@@ -1,11 +1,13 @@
-from user.models import UserProfile, LoginToken
-from rest_framework import serializers
-from django.contrib.auth.hashers import make_password, check_password
 import hashlib
+
 from django.contrib.auth import authenticate
-from post.models import Friend
-from weconnect.tasks import send_verify_email_task
+from django.contrib.auth.hashers import check_password, make_password
 from django.db.models import Q
+from rest_framework import serializers
+
+from post.models import Friend
+from user.models import LoginToken, UserProfile
+from weconnect.tasks import send_verify_email_task
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -81,5 +83,3 @@ class UserProfileSerializer(serializers.ModelSerializer):
             is_friend = None
         user['is_friend'] = is_friend
         return user
-
-        

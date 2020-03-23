@@ -1,13 +1,18 @@
-from django.shortcuts import render
-from rest_framework.viewsets import ModelViewSet
-from rest_framework.generics import CreateAPIView, DestroyAPIView, RetrieveAPIView
-from user.models import UserProfile, LoginToken
+import hashlib
+
+from django.contrib.auth.hashers import make_password
+from django.shortcuts import get_object_or_404, render
+from rest_framework import permissions, status, views
+from rest_framework.generics import (CreateAPIView, DestroyAPIView,
+                                     RetrieveAPIView)
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import permissions, views, status
-from user.serializers import UserSerializer, LoginSerializer, UserProfileSerializer
-from django.shortcuts import get_object_or_404
+from rest_framework.viewsets import ModelViewSet
 
+from user.models import LoginToken, UserProfile
+from user.serializers import (LoginSerializer, UserProfileSerializer,
+                              UserSerializer)
+from weconnect.tasks import forgot_password_mail_task
 
 
 class UserViewset(ModelViewSet):
@@ -83,3 +88,38 @@ class EmailVerifyView(APIView):
         user_obj.verified = True
         user_obj.save()
         return Response("Verified successfully", status=status.HTTP_200_OK)
+
+
+class SendForgotPasswordMailView(APIView):
+
+    def post(self, request, *args, **kwargs):
+        username = request.data['username']
+        user_obj = get_object_or_404(UserProfile, username=username)
+        email = user_obj.email
+        token = hashlib.md5(username.encode()).hexdigest()
+        forgot_password_mail_task.delay(email, token)
+        user_obj.forgot_pass_token = token
+        user_obj.save()
+        return Response("Email sent", status=status.HTTP_200_OK)
+
+
+class ForgotPasswordView(APIView):
+
+    def post(self, request, *args, **kwargs):
+        token = request.data['token']
+        user_obj = get_object_or_404(UserProfile, forgot_pass_token=token)
+        user_obj.forgot_pass_token = ""
+        user_obj.save()
+        return Response(user_obj.pk, status=status.HTTP_200_OK)
+
+
+class ResetPasswordView(APIView):
+
+    def post(self, request, *args, **kwargs):
+        password = request.data['password']
+        pk = request.data['pk']
+
+        user_obj = UserProfile.objects.get(pk=pk)
+        user_obj.password = make_password(password)
+        user_obj.save()
+        return Response(status=status.HTTP_200_OK)

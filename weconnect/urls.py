@@ -1,5 +1,5 @@
-from django.conf.urls import url, include, static
 from django.conf import settings
+from django.conf.urls import include, static, url
 from django.contrib import admin
 
 urlpatterns = [

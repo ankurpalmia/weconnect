@@ -1,8 +1,9 @@
-from user.models import UserProfile
-from post.models import Post, Friend
-from rest_framework import serializers
-from post.utils import get_friends
 from django.db.models import Q
+from rest_framework import serializers
+
+from post.models import Friend, Post
+from post.utils import get_friends
+from user.models import UserProfile
 
 
 class PostSerializer(serializers.ModelSerializer):
