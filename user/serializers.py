@@ -4,10 +4,12 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import check_password, make_password
 from django.db.models import Q
 from rest_framework import serializers
+from rest_framework.exceptions import NotFound
 
 from post.models import Friend
 from user.models import LoginToken, UserProfile
 from weconnect.tasks import send_verify_email_task
+from weconnect.tasks import forgot_password_mail_task
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -65,21 +67,92 @@ class UserProfileSerializer(serializers.ModelSerializer):
     This serializer is used for User Profile
     """
     full_name = serializers.CharField(source='get_full_name')
+    is_friend = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
-        fields = ['username', 'full_name', 'profile_pic', 'date_of_birth', 'gender', 'city']
+        fields = ['username', 'full_name', 'profile_pic', 'date_of_birth', 'gender', 'city', 'is_friend']
 
-    def to_representation(self, instance):
-        user = super().to_representation(instance)
+    def get_is_friend(self, instance):
         auth_user = self.context['request'].user
-        is_friend = None
+        rel = None
         try:
-            is_friend = Friend.objects.get(
+            rel = Friend.objects.get(
                 Q(sender=instance, receiver=auth_user) | 
                 Q(receiver=instance, sender=auth_user))
-            is_friend = is_friend.accepted
+            rel = rel.accepted
         except Friend.DoesNotExist:
-            is_friend = None
-        user['is_friend'] = is_friend
-        return user
+            rel = None
+        return rel
+
+
+class EmailVerifySerializer(serializers.ModelSerializer):
+
+    token = serializers.CharField(source="email_token", write_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = ['token']
+
+    def create(self, validated_data):
+        try:
+            obj = UserProfile.objects.get(email_token=validated_data['email_token'])
+            if obj.verified:
+                raise serializers.ValidationError("Already Verified")
+            obj.verified = True
+            obj.save()
+        except UserProfile.DoesNotExist:
+            raise NotFound()
+        return obj
+
+
+
+class ForgotPasswordSerializer(serializers.ModelSerializer):
+
+    username = serializers.CharField()
+
+    class Meta:
+        model = UserProfile
+        fields = ['username', 'forgot_pass_token']
+        read_only_fields = ['forgot_pass_token']
+
+    def create(self, validated_data):
+        obj = UserProfile.objects.get(username=validated_data['username'])
+        token = hashlib.md5(obj.username.encode()).hexdigest()
+        forgot_password_mail_task.delay(obj.email, token)
+        obj.forgot_pass_token = token
+        obj.save()
+        return obj
+
+
+class CheckPasswordToken(serializers.ModelSerializer):
+
+    token = serializers.CharField(source="forgot_pass_token", write_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = ['token', 'pk']
+        read_only_fields = ['pk']
+
+    def create(self, validated_data):
+        try:
+            obj = UserProfile.objects.get(forgot_pass_token=validated_data['forgot_pass_token'])
+            obj.forgot_pass_token = ""
+            obj.save()
+        except UserProfile.DoesNotExist:
+            raise NotFound()
+        return obj
+
+
+class ResetPasswordSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = UserProfile
+        fields = ['pk', 'password']
+        extra_kwargs = {'password': {'write_only': True}}
+
+    def update(self, instance, validated_data):
+        instance.password = make_password(validated_data['password'])
+        instance.save()
+        return instance
+        

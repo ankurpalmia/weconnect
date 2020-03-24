@@ -9,7 +9,9 @@ from rest_framework.viewsets import ModelViewSet
 
 from post.models import Friend, Post
 from post.permissions import IsVerifiedOwner
-from post.serializers import GetPostSerializer, PostSerializer, UserForPost
+from post.serializers import (GetPostSerializer, LikeUnlikeSerializer,
+                              PostSerializer, RespondSerializer,
+                              SendRequestSerializer, UserForPost)
 from post.utils import get_friends
 from user.models import UserProfile
 from weconnect.tasks import send_friend_request_task
@@ -37,22 +39,19 @@ class GetPostsView(ListAPIView):
         all_friends = get_friends(user)
         all_posts = Post.objects.filter(created_by=user)
 
-        for friend in all_friends:
-            posts = Post.objects.filter(
-                Q(created_by=friend, privacy='PUBLIC') | 
-                Q(created_by=friend, privacy='FRIENDS'))
-            all_posts |= posts
-            
+        posts = Post.objects.filter(
+            Q(created_by__in=all_friends) &
+            (Q(privacy='PUBLIC') | Q(privacy='FRIENDS'))
+        )
+        all_posts |= posts
+        
         custom_list_posts = user.post_by_friends.all()
-        print(custom_list_posts.query)
         all_posts |= custom_list_posts
         all_posts = all_posts.order_by('-created_at')
         
-        serializer = self.serializer_class(all_posts.distinct(), many=True)
+        serializer = self.serializer_class(all_posts.distinct(), many=True, context={'request': request})
         page = self.paginate_queryset(serializer.data)
-        return self.get_paginated_response(page)
-
-        # return Response(serializer.data)
+        return self.get_paginated_response(page)    
 
 
 class UserProfilePostsView(ListAPIView):
@@ -77,7 +76,7 @@ class UserProfilePostsView(ListAPIView):
         
         def is_same_user():
             if requested_by == username:
-                return Q(created_by=username, privacy='PRIVATE') | Q(created_by=username, privacy='CUSTOM') | Q(created_by=username, privacy='FRIENDS')
+                return Q(created_by=username) & (Q(privacy='PRIVATE') | Q(privacy='CUSTOM') | Q(privacy='FRIENDS'))
             else:
                 return Q(created_by=username, privacy='CUSTOM', custom_list=requested_by.pk)
 
@@ -87,13 +86,15 @@ class UserProfilePostsView(ListAPIView):
         
         all_posts = all_posts.order_by('-created_at')
         
-        serializer = self.serializer_class(all_posts, many=True)
+        serializer = self.serializer_class(all_posts, many=True, context={'request': request})
         page = self.paginate_queryset(serializer.data)
         return self.get_paginated_response(page)
-        # return Response(serializer.data)
 
 
 class GetAllFriendsView(ListAPIView):
+    """
+    This view returns a list of friends of a user
+    """
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = UserForPost
 
@@ -104,53 +105,25 @@ class GetAllFriendsView(ListAPIView):
         return Response(serializer.data)
 
 
-class SendRequestView(APIView):
+class SendRequestView(CreateAPIView):
+    """
+    This view takes a sender and receiver to send friend request over mail
+    """
     permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        sender = request.user
-        username = request.data['username']
-        receiver = get_object_or_404(UserProfile, username=username)
-        friend_obj = Friend.objects.create(sender=sender, receiver=receiver, accepted=False)
-        receiver_email = receiver.email
-        sender_name = sender.get_full_name()
-        send_friend_request_task.delay(receiver_email, sender_name, sender.pk, receiver.pk)
-        return Response("Request Sent", status=status.HTTP_200_OK)
+    serializer_class = SendRequestSerializer
 
 
-class RespondRequest(APIView):
-
-    def post(self, request, *args, **kwargs):
-        sender = request.data['sender']
-        receiver = request.data['receiver']
-        accepted = request.data['accepted']
-
-        sender = get_object_or_404(UserProfile, pk=sender)
-        receiver = get_object_or_404(UserProfile, pk=receiver)
-
-        if accepted:
-            obj, created = Friend.objects.get_or_create(sender=sender, receiver=receiver)
-            obj.accepted = True
-            obj.save()
-        else:
-            Friend.objects.filter(sender=sender, receiver=receiver).delete()
-        
-        return Response(status=status.HTTP_200_OK)
+class RespondRequest(CreateAPIView):
+    """
+    This view takes sender, receiver and the response of the receiver for friend request
+    """
+    queryset = Friend.objects.all()
+    serializer_class = RespondSerializer
 
 
-class LikeUnlikeView(APIView):
-
-    def post(self, request, *args, **kwargs):
-        user = request.user
-        pk = request.data['pk']
-        action = request.data['action']
-
-        post_obj = get_object_or_404(Post, pk=pk)
-        liked_by = post_obj.liked_by
-        
-        if action == 'like':
-            post_obj.liked_by.add(user)
-        else:
-            post_obj.liked_by.remove(user)
-        post_obj.save()
-        return Response(status=status.HTTP_200_OK)
+class LikeUnlikeView(CreateAPIView):
+    """
+    This view takes a post and an action on post which can be either like or unlike
+    """
+    queryset = Post.objects.all()
+    serializer_class = LikeUnlikeSerializer

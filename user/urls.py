@@ -15,7 +15,7 @@ urlpatterns = [
     url(r'getuser/$', GetUserDetails.as_view()),
     url(r'getprofile/$', GetProfileView.as_view()),
     url(r'verify-email/$', EmailVerifyView.as_view()),
-    url(r'reset-password/$', ResetPasswordView.as_view()),
     url(r'forgot-password/$', ForgotPasswordView.as_view()),
-    url(r'send-forgot-mail/$', SendForgotPasswordMailView.as_view())
+    url(r'send-forgot-mail/$', SendForgotPasswordMailView.as_view()),
+    url(r'reset-password/(?P<pk>\d+)/$', ResetPasswordView.as_view()),
 ] + router.urls

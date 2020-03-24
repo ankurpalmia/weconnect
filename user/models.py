@@ -103,22 +103,3 @@ class LoginToken(BaseModel, models.Model):
 
     def __str__(self):
         return self.key
-
-
-# class EmailToken(BaseModel, models.Model):
-#     """
-#     This model will store token which will be used to verify user
-#     """
-#     key = models.CharField(primary_key=True, max_length=255, verbose_name="Email Token")
-#     email = models.EmailField(max_length=100, unique=True)
-
-#     def save(self, *args, **kwargs):
-#         if not self.key:
-#             self.key = self.generate_key()
-#         return super().save(*args, **kwargs)
-
-#     def generate_key(self):
-#         return binascii.hexlify(os.urandom(20)).decode()
-
-#     def __str__(self):
-#         return "{} : {}".format(self.email, self.key)
