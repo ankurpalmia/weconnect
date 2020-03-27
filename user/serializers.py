@@ -34,7 +34,7 @@ class UserSerializer(serializers.ModelSerializer):
 
         send_verify_email_task.delay(email, email_token)
 
-        return super(UserSerializer, self).create(validated_data)
+        return super().create(validated_data)
 
 
 class LoginSerializer(serializers.Serializer):
@@ -97,14 +97,14 @@ class EmailVerifySerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         try:
             obj = UserProfile.objects.get(email_token=validated_data['email_token'])
+        except UserProfile.DoesNotExist:
+            raise NotFound()
+        else:
             if obj.verified:
                 raise serializers.ValidationError("Already Verified")
             obj.verified = True
             obj.save()
-        except UserProfile.DoesNotExist:
-            raise NotFound()
-        return obj
-
+            return obj
 
 
 class ForgotPasswordSerializer(serializers.ModelSerializer):
@@ -117,12 +117,16 @@ class ForgotPasswordSerializer(serializers.ModelSerializer):
         read_only_fields = ['forgot_pass_token']
 
     def create(self, validated_data):
-        obj = UserProfile.objects.get(username=validated_data['username'])
-        token = hashlib.md5(obj.username.encode()).hexdigest()
-        forgot_password_mail_task.delay(obj.email, token)
-        obj.forgot_pass_token = token
-        obj.save()
-        return obj
+        try:
+            obj = UserProfile.objects.get(username=validated_data['username'])
+        except:
+            raise NotFound("Username not found")
+        else:
+            token = hashlib.md5(obj.username.encode()).hexdigest()
+            forgot_password_mail_task.delay(obj.email, token)
+            obj.forgot_pass_token = token
+            obj.save()
+            return obj
 
 
 class CheckPasswordToken(serializers.ModelSerializer):
@@ -137,11 +141,12 @@ class CheckPasswordToken(serializers.ModelSerializer):
     def create(self, validated_data):
         try:
             obj = UserProfile.objects.get(forgot_pass_token=validated_data['forgot_pass_token'])
-            obj.forgot_pass_token = ""
-            obj.save()
         except UserProfile.DoesNotExist:
             raise NotFound()
-        return obj
+        else:
+            obj.forgot_pass_token = ""
+            obj.save()
+            return obj
 
 
 class ResetPasswordSerializer(serializers.ModelSerializer):

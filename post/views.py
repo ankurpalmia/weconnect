@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, render
 from rest_framework import permissions, status
-from rest_framework.generics import CreateAPIView, ListAPIView
+from rest_framework.generics import CreateAPIView, ListAPIView, UpdateAPIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -10,7 +10,7 @@ from rest_framework.viewsets import ModelViewSet
 from post.models import Friend, Post
 from post.permissions import IsVerifiedOwner
 from post.serializers import (GetPostSerializer, LikeUnlikeSerializer,
-                              PostSerializer, RespondSerializer,
+                              PostSerializer, RequestRespondSerializer,
                               SendRequestSerializer, UserForPost)
 from post.utils import get_friends
 from user.models import UserProfile
@@ -118,10 +118,10 @@ class RespondRequest(CreateAPIView):
     This view takes sender, receiver and the response of the receiver for friend request
     """
     queryset = Friend.objects.all()
-    serializer_class = RespondSerializer
+    serializer_class = RequestRespondSerializer
 
 
-class LikeUnlikeView(CreateAPIView):
+class LikeUnlikeView(UpdateAPIView):
     """
     This view takes a post and an action on post which can be either like or unlike
     """

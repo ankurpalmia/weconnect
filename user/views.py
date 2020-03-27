@@ -89,6 +89,14 @@ class EmailVerifyView(CreateAPIView):
     serializer_class = EmailVerifySerializer
 
 
+class ResetPasswordView(UpdateAPIView):
+    """
+    This view takes pk and the new password for password reset
+    """
+    queryset = UserProfile.objects.all()
+    serializer_class = ResetPasswordSerializer
+
+
 class SendForgotPasswordMailView(CreateAPIView):
     """
     This view takes a username and then send email with reset password token
@@ -103,11 +111,3 @@ class ForgotPasswordView(CreateAPIView):
     """
     queryset = UserProfile.objects.all()
     serializer_class = CheckPasswordToken
-
-
-class ResetPasswordView(UpdateAPIView):
-    """
-    This view takes pk and the new password for password reset
-    """
-    queryset = UserProfile.objects.all()
-    serializer_class = ResetPasswordSerializer

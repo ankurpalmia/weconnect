@@ -18,7 +18,7 @@ class PostSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data['created_by'] = self.context['request'].user
-        return super(PostSerializer, self).create(validated_data)
+        return super().create(validated_data)
 
 
 class UserForPost(serializers.ModelSerializer):
@@ -49,7 +49,7 @@ class GetPostSerializer(serializers.ModelSerializer):
         return obj.liked_by.count()
     
     def get_liked_by(self, obj):
-        return [person.get_full_name() for person in obj.liked_by.all()]
+        return [person.username for person in obj.liked_by.all()]
     
     def get_liked_by_me(self, obj):
         user = self.context['request'].user
@@ -71,19 +71,20 @@ class SendRequestSerializer(serializers.ModelSerializer):
         try:
             receiver_username = validated_data.pop('username')
             receiver = UserProfile.objects.get(username=receiver_username)
+        except UserProfile.DoesNotExist:
+            raise NotFound('Username not found')
+        else:
             validated_data['sender'] = sender
             validated_data['receiver'] = receiver
             validated_data['accepted'] = False
             receiver_email = receiver.email
             sender_name = sender.get_full_name()
             send_friend_request_task.delay(receiver_email, sender_name, sender.pk, receiver.pk)
-            return super(SendRequestSerializer, self).create(validated_data)
-
-        except UserProfile.DoesNotExist:
-            raise NotFound('Username not found')
+            return super().create(validated_data)
 
 
-class RespondSerializer(serializers.ModelSerializer):
+
+class RequestRespondSerializer(serializers.ModelSerializer):
 
     sender = serializers.CharField(write_only=True, source='sender.pk')
     receiver = serializers.CharField(write_only=True, source='receiver.pk')
@@ -98,8 +99,10 @@ class RespondSerializer(serializers.ModelSerializer):
         accepted = validated_data['accepted']
         try:
             sender = UserProfile.objects.get(pk=sender_pk)
-            receiver = UserProfile.objects.get(pk=receiver_pk)
-
+            receiver = UserProfile.objects.get(pk=receiver_pk)        
+        except UserProfile.DoesNotExist:
+            raise NotFound("User not found")
+        else:
             if accepted:
                 obj, created = Friend.objects.get_or_create(sender=sender, receiver=receiver)
                 obj.accepted = True
@@ -107,9 +110,6 @@ class RespondSerializer(serializers.ModelSerializer):
             else:
                 obj = Friend.objects.filter(sender=sender, receiver=receiver).delete()
             return obj
-        
-        except UserProfile.DoesNotExist:
-            raise NotFound("User not found")
             
 
 
@@ -123,18 +123,13 @@ class LikeUnlikeSerializer(serializers.ModelSerializer):
         fields = ['liked_by', 'pk', 'action']
         read_only_fields = ['liked_by']
 
-    def create(self, validated_data):
-        pk = validated_data.pop('pk')
+    def update(self, instance, validated_data):
         action = validated_data.pop('action')
         user = self.context['request'].user
-        try:
-            post_obj = Post.objects.get(pk=pk)
-            liked_by = post_obj.liked_by
-            if action == 'like':
-                post_obj.liked_by.add(user)
-            else:
-                post_obj.liked_by.remove(user)
-            post_obj.save()
-            return post_obj
-        except Post.DoesNotExist:
-            raise NotFound("Post does not exists")
+        liked_by = instance.liked_by
+        if action == 'like':
+            instance.liked_by.add(user)
+        else:
+            instance.liked_by.remove(user)
+        instance.save()
+        return instance
