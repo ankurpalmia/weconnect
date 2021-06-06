@@ -1,0 +1,4 @@
+*.pyc
+.vscode
+local_settings.py
+assets
