@@ -6,6 +6,8 @@ VERIFY_EMAIL_SUBJECT = "WeConnect: Email verification"
 REQUEST_MAIL_SUBJECT = "WeConnect: New Friend Request"
 FORGOT_PASSWORD_MAIL_SUBJECT = "WeConnect: Forgot Password"
 
+URL = "http://localhost:3000/"
+
 PROFILE_PIC_PATH = "profile_pics/"
 POST_PIC_PATH = "posts/"
 
